@@ -602,7 +602,6 @@ async function fetchEntries() {
   try {
     const res = await fetch(SCRIPT_URL + "?action=getAll&key=" + SECRET, {redirect:"follow"});
     const raw = await res.json();
-    if(raw.length > 1) console.log("Raw date sample from Sheets:", raw[1][1], typeof raw[1][1]);
     entries = raw.filter(r => r[0] && r[0] !== "id").map(r => ({
       id: String(r[0]),
       date: String(r[1]),
@@ -749,6 +748,8 @@ function parseDate(str) {
   }
   // Convert to string and clean up
   str = String(str).trim();
+  // Strip ISO timestamp portion (e.g. 2026-04-05T05:00:00.000Z -> 2026-04-05)
+  if (str.includes("T")) { str = str.split("T")[0]; }
   // Handle serialized date like "Date(2026,3,12)" that Apps Script sometimes returns
   const dateMatch = str.match(/Date\((\d+),(\d+),(\d+)\)/);
   if (dateMatch) {
