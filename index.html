@@ -602,6 +602,7 @@ async function fetchEntries() {
   try {
     const res = await fetch(SCRIPT_URL + "?action=getAll&key=" + SECRET, {redirect:"follow"});
     const raw = await res.json();
+    if(raw.length > 1) console.log("Raw date sample from Sheets:", raw[1][1], typeof raw[1][1]);
     entries = raw.filter(r => r[0] && r[0] !== "id").map(r => ({
       id: String(r[0]),
       date: String(r[1]),
@@ -741,10 +742,25 @@ document.getElementById("logList").addEventListener("click", async e => {
 });
 
 function parseDate(str) {
+  if (!str) return {y:null,m:null,d:null};
+  // Handle if Google Sheets returns a Date object or number
+  if (str instanceof Date) {
+    return {y: str.getFullYear(), m: str.getMonth()+1, d: str.getDate()};
+  }
+  // Convert to string and clean up
   str = String(str).trim();
+  // Handle serialized date like "Date(2026,3,12)" that Apps Script sometimes returns
+  const dateMatch = str.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (dateMatch) {
+    return {y: Number(dateMatch[1]), m: Number(dateMatch[2])+1, d: Number(dateMatch[3])};
+  }
   let y, m, d;
   if (str.includes("-")) {
-    [y,m,d] = str.split("-").map(Number);
+    const parts = str.split("-").map(Number);
+    // YYYY-MM-DD
+    if (parts[0] > 31) { [y,m,d] = parts; }
+    // DD-MM-YYYY fallback
+    else { [d,m,y] = parts; }
   } else if (str.includes("/")) {
     const parts = str.split("/").map(Number);
     if (parts[0] > 31) { [y,m,d] = parts; }
