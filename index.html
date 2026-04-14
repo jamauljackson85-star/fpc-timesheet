@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPC Musician Timesheet</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F2EC;
+  --surface: #FFFFFF;
+  --surface2: #EFECE5;
+  --border: rgba(0,0,0,0.1);
+  --border-strong: rgba(0,0,0,0.2);
+  --text: #1A1714;
+  --text-muted: #6B6560;
+  --text-hint: #A09A94;
+  --accent: #2B4C8C;
+  --accent-light: #E8EDF6;
+  --accent-border: #7A9AD4;
+  --success: #2D6A4F;
+  --success-light: #E8F4EE;
+  --danger: #8B2A2A;
+  --danger-light: #F5E8E8;
+  --gold: #B8860B;
+  --gold-light: #FDF6E3;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+.app-header {
+  background: var(--text);
+  color: white;
+  padding: 20px 24px 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.app-header-left h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+.app-header-left p {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 3px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sync-status {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.6);
+}
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #4CAF50;
+  flex-shrink: 0;
+}
+.sync-dot.syncing { background: #FFC107; animation: pulse 1s infinite; }
+.sync-dot.error { background: #f44336; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.main { padding: 20px 16px 40px; max-width: 640px; margin: 0 auto; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.card-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+  margin-bottom: 14px;
+}
+
+label { font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 5px; }
+
+input[type=text], input[type=date], select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  margin-bottom: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type=text]:focus, input[type=date]:focus, select:focus {
+  border-color: var(--accent);
+}
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 > div > input, .row2 > div > select { margin-bottom: 0; }
+
+.svc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.svc-btn {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+}
+.svc-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.svc-btn.active { background: var(--accent-light); border-color: var(--accent-border); color: var(--accent); font-weight: 600; }
+
+.add-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--text);
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.add-btn:hover { opacity: 0.85; }
+.add-btn:active { transform: scale(0.98); }
+.add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.toast {
+  font-size: 13px;
+  text-align: center;
+  height: 20px;
+  margin-top: 10px;
+  transition: opacity 0.3s;
+}
+.toast.success { color: var(--success); }
+.toast.error { color: var(--danger); }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+}
+.stat-num { font-size: 22px; font-weight: 600; color: var(--text); font-family: 'DM Serif Display', serif; }
+.stat-lbl { font-size: 11px; color: var(--text-hint); margin-top: 3px; letter-spacing: 0.04em; }
+
+.print-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+  transition: all 0.12s;
+}
+.print-btn:hover { background: var(--accent); color: white; }
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.count-pill {
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  color: var(--text-muted);
+}
+
+.filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.filter-btn {
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.1s;
+}
+.filter-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.entry:last-child { border-bottom: none; }
+.entry-date { font-size: 14px; font-weight: 600; color: var(--text); }
+.entry-day { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+.entry-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.pay-amt { font-size: 13px; font-weight: 600; color: var(--success); min-width: 44px; text-align: right; }
+
+.del-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-hint);
+  font-size: 16px;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: all 0.1s;
+}
+.del-btn:hover { color: var(--danger); background: var(--danger-light); }
+
+.empty {
+  text-align: center;
+  padding: 2.5rem 0;
+  font-size: 14px;
+  color: var(--text-hint);
+}
+
+.loading-row {
+  text-align: center;
+  padding: 1.5rem 0;
+  font-size: 13px;
+  color: var(--text-hint);
+}
+
+/* Print overlay */
+.print-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 999;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 24px 16px;
+}
+.print-overlay.open { display: flex; }
+.print-box {
+  background: white;
+  width: 700px;
+  max-width: 100%;
+  border-radius: var(--radius-lg);
+  padding: 36px 40px;
+  position: relative;
+  margin: auto;
+}
+.print-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.print-actions button {
+  padding: 9px 22px;
+  border-radius: var(--radius);
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+}
+.print-actions button.primary {
+  background: #1A1714;
+  color: white;
+  border-color: #1A1714;
+}
+.close-overlay {
+  position: absolute;
+  top: 14px; right: 18px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+}
+
+/* Timesheet print styles */
+.ts-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  text-align: center;
+  color: #111;
+  margin-bottom: 4px;
+}
+.ts-church {
+  font-size: 12px;
+  text-align: center;
+  color: #777;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.ts-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.ts-meta-item { border-bottom: 1.5px solid #222; padding-bottom: 5px; }
+.ts-meta-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #777; }
+.ts-meta-value { font-size: 15px; color: #111; font-weight: 500; min-height: 22px; margin-top: 2px; }
+
+.ts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ts-table th {
+  background: #1A1714;
+  color: white;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ts-table td { padding: 9px 12px; border-bottom: 0.5px solid #ddd; color: #111; }
+.ts-table tr:nth-child(even) td { background: #f8f7f5; }
+.ts-table .total-row td {
+  border-top: 2px solid #1A1714;
+  font-weight: 700;
+  background: #F5F2EC;
+  font-size: 13px;
+}
+.ts-sig {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 32px;
+}
+.ts-sig-line { border-bottom: 1.5px solid #333; margin-top: 28px; padding-bottom: 5px; }
+.ts-sig-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #777; margin-top: 5px; }
+.ts-footer { margin-top: 20px; font-size: 10px; color: #aaa; text-align: center; }
+
+@media print {
+  .print-actions, .close-overlay { display: none !important; }
+  .print-overlay { position: static; background: none; padding: 0; display: block; }
+  .print-box { box-shadow: none; border-radius: 0; padding: 24px; }
+  body > *:not(.print-overlay) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-header-left">
+    <h1>First Pilgrim Church</h1>
+    <p>Musician Timesheet</p>
+  </div>
+  <div class="sync-status">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncLabel">Connected</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Musician Info -->
+  <div class="card">
+    <div class="card-label">Musician info</div>
+    <label>Your name</label>
+    <input type="text" id="musicianName" placeholder="e.g. John Smith" autocomplete="name">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:2px">Pay per service</div>
+        <div style="font-size:20px;font-weight:600;font-family:'DM Serif Display',serif;color:var(--text)" id="rateDisplay">$150.00</div>
+      </div>
+      <button id="changeRateBtn" style="padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--bg);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;color:var(--text-muted);cursor:pointer">Change rate</button>
+    </div>
+    <div id="rateEditWrap" style="display:none;background:var(--surface2);border:1px solid var(--border-strong);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+      <label style="margin-bottom:6px">New pay rate per service</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:18px;color:var(--text-muted);font-weight:500">$</span>
+        <input type="number" id="rateInput" min="1" step="0.01" placeholder="150.00" style="flex:1;margin-bottom:0">
+        <button id="saveRateBtn" style="padding:9px 18px;border-radius:var(--radius);border:none;background:var(--text);color:white;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">Save</button>
+        <button id="cancelRateBtn" style="padding:9px 14px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--bg);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text-muted)">Cancel</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-hint);margin-top:8px">This only affects new entries — existing entries keep their original rate.</div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Month</label>
+        <select id="monthSel">
+          <option value="0">January</option><option value="1">February</option>
+          <option value="2">March</option><option value="3">April</option>
+          <option value="4">May</option><option value="5">June</option>
+          <option value="6">July</option><option value="7">August</option>
+          <option value="8">September</option><option value="9">October</option>
+          <option value="10">November</option><option value="11">December</option>
+        </select>
+      </div>
+      <div>
+        <label>Year</label>
+        <select id="yearSel"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Entry -->
+  <div class="card">
+    <div class="card-label">Log a service</div>
+    <label>Date</label>
+    <input type="date" id="dateInput">
+    <label>Service type</label>
+    <div class="svc-grid" id="svcGrid">
+      <button class="svc-btn" data-svc="Sunday Morning">Sunday Morning</button>
+      <button class="svc-btn" data-svc="Midweek Service">Midweek Service</button>
+      <button class="svc-btn" data-svc="Rehearsal">Rehearsal</button>
+      <button class="svc-btn" data-svc="Revival">Revival</button>
+      <button class="svc-btn" data-svc="Funeral">Funeral</button>
+      <button class="svc-btn" data-svc="Other" id="otherSvcBtn">Other</button>
+    </div>
+    <div id="otherSvcWrap" style="display:none;margin-bottom:14px">
+      <input type="text" id="otherSvcInput" placeholder="e.g. Youth Conference, Anniversary Service..." style="margin-bottom:0">
+    </div>
+    <button class="add-btn" id="addBtn">Add entry</button>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow" style="display:none"></div>
+
+  <!-- Print Button -->
+  <button class="print-btn" id="printBtn" style="display:none">Preview &amp; print monthly timesheet</button>
+
+  <!-- History -->
+  <div class="card">
+    <div class="log-header">
+      <span class="card-label" style="margin:0">History</span>
+      <span class="count-pill" id="countPill">Loading...</span>
+    </div>
+    <div class="filter-row" id="filterRow" style="display:none">
+      <button class="filter-btn active" data-filter="All">All</button>
+      <button class="filter-btn" data-filter="Sunday Morning">Sunday</button>
+      <button class="filter-btn" data-filter="Midweek Service">Midweek</button>
+      <button class="filter-btn" data-filter="Rehearsal">Rehearsal</button>
+      <button class="filter-btn" data-filter="Revival">Revival</button>
+      <button class="filter-btn" data-filter="Funeral">Funeral</button>
+      <button class="filter-btn" data-filter="Other">Other</button>
+    </div>
+    <div id="logList"><div class="loading-row">Loading entries from Google Sheets...</div></div>
+  </div>
+
+</div>
+
+<!-- Print Overlay -->
+<div class="print-overlay" id="printOverlay">
+  <div class="print-box">
+    <button class="close-overlay" id="closeOverlay">&#x2715;</button>
+    <div class="print-actions">
+      <button class="primary" onclick="window.print()">Print / Save PDF</button>
+      <button id="closeOverlay2">Close</button>
+    </div>
+    <div id="printContent"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycT7oO8LHYxYUdnouQo8JAL2AHE7GLODdPXHrJ0E5NwDTjdc40feXNiq8zVkxJScu3Fg/exec";
+const SECRET = "fpc2025drummer";
+let RATE = parseFloat(localStorage.getItem("fpc_rate")) || 150;
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const COLORS = {
+  "Sunday Morning":  {bg:"#E8EDF6",border:"#7A9AD4",text:"#2B4C8C"},
+  "Midweek Service": {bg:"#E8F4EE",border:"#6AAF8A",text:"#2D6A4F"},
+  "Rehearsal":       {bg:"#F0EDE8",border:"#9A938C",text:"#5C564F"},
+  "Revival":         {bg:"#EDE8F5",border:"#9A8AC4",text:"#4A3880"},
+  "Funeral":         {bg:"#FDF6E3",border:"#C9A227",text:"#7A5800"},
+  "Other":   {bg:"#F5E8E8",border:"#C47A7A",text:"#8B2A2A"}
+};
+
+let entries = [];
+let selectedSvc = null;
+let filterSvc = "All";
+let isLoading = false;
+
+// Init selects
+const now = new Date();
+document.getElementById("monthSel").value = now.getMonth();
+const yrSel = document.getElementById("yearSel");
+for(let y = now.getFullYear(); y >= 2020; y--) {
+  const o = document.createElement("option");
+  o.value = y; o.textContent = y;
+  yrSel.appendChild(o);
+}
+
+function todayStr() {
+  return now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+}
+document.getElementById("dateInput").value = todayStr();
+
+// Restore name from localStorage
+const savedName = localStorage.getItem("fpc_musician_name");
+if(savedName) document.getElementById("musicianName").value = savedName;
+document.getElementById("musicianName").addEventListener("input", e => {
+  localStorage.setItem("fpc_musician_name", e.target.value);
+});
+
+function updateRateDisplay() {
+  document.getElementById("rateDisplay").textContent = "$" + RATE.toFixed(2);
+}
+updateRateDisplay();
+
+document.getElementById("changeRateBtn").addEventListener("click", () => {
+  document.getElementById("rateEditWrap").style.display = "block";
+  document.getElementById("rateInput").value = RATE.toFixed(2);
+  document.getElementById("rateInput").focus();
+});
+
+document.getElementById("cancelRateBtn").addEventListener("click", () => {
+  document.getElementById("rateEditWrap").style.display = "none";
+});
+
+document.getElementById("saveRateBtn").addEventListener("click", () => {
+  const val = parseFloat(document.getElementById("rateInput").value);
+  if(!val || val <= 0) { showToast("Please enter a valid rate.", "error"); return; }
+  RATE = val;
+  localStorage.setItem("fpc_rate", RATE);
+  updateRateDisplay();
+  document.getElementById("rateEditWrap").style.display = "none";
+  showToast("Pay rate updated to $" + RATE.toFixed(2) + "!", "success");
+  renderStats();
+});
+
+function setSyncStatus(state) {
+  const dot = document.getElementById("syncDot");
+  const lbl = document.getElementById("syncLabel");
+  dot.className = "sync-dot" + (state === "syncing" ? " syncing" : state === "error" ? " error" : "");
+  lbl.textContent = state === "syncing" ? "Syncing..." : state === "error" ? "Offline" : "Synced";
+}
+
+async function fetchEntries() {
+  setSyncStatus("syncing");
+  try {
+    const res = await fetch(SCRIPT_URL + "?action=getAll&key=" + SECRET, {redirect:"follow"});
+    const raw = await res.json();
+    entries = raw.filter(r => r[0] && r[0] !== "id").map(r => ({
+      id: String(r[0]),
+      date: String(r[1]),
+      day: String(r[2]),
+      svc: String(r[3]),
+      pay: Number(r[4]),
+      musician: String(r[5] || "")
+    }));
+    entries = entries.map(e => ({...e, date: normDate(e.date)}));
+    entries.sort((a,b) => a.date.localeCompare(b.date));
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus("error");
+  }
+  render();
+}
+
+async function addEntry(entry) {
+  setSyncStatus("syncing");
+  const params = new URLSearchParams({
+    action: "add",
+    key: SECRET,
+    id: entry.id,
+    date: entry.date,
+    day: entry.day,
+    svc: entry.svc,
+    pay: entry.pay,
+    musician: entry.musician
+  });
+  const res = await fetch(SCRIPT_URL + "?" + params.toString(), {redirect:"follow"});
+  const data = await res.json();
+  setSyncStatus("ok");
+  return data.status === "ok";
+}
+
+async function deleteEntry(id) {
+  setSyncStatus("syncing");
+  const params = new URLSearchParams({action:"delete", key:SECRET, id});
+  await fetch(SCRIPT_URL + "?" + params.toString(), {redirect:"follow"});
+  setSyncStatus("ok");
+}
+
+document.getElementById("svcGrid").addEventListener("click", e => {
+  const btn = e.target.closest(".svc-btn");
+  if(!btn) return;
+  selectedSvc = btn.dataset.svc;
+  document.querySelectorAll(".svc-btn").forEach(b => b.classList.toggle("active", b === btn));
+  const wrap = document.getElementById("otherSvcWrap");
+  const inp = document.getElementById("otherSvcInput");
+  if(selectedSvc === "Other") {
+    wrap.style.display = "block";
+    inp.focus();
+  } else {
+    wrap.style.display = "none";
+    inp.value = "";
+  }
+});
+
+document.getElementById("addBtn").addEventListener("click", async () => {
+  const date = document.getElementById("dateInput").value;
+  const musician = document.getElementById("musicianName").value.trim();
+  if(!date) { showToast("Please pick a date.", "error"); return; }
+  if(!selectedSvc) { showToast("Please select a service type.", "error"); return; }
+  let finalSvc = selectedSvc;
+  if(selectedSvc === "Other") {
+    const custom = document.getElementById("otherSvcInput").value.trim();
+    if(!custom) { showToast("Please describe the event.", "error"); return; }
+    finalSvc = custom;
+  }
+  if(!musician) { showToast("Please enter your name.", "error"); return; }
+  if(entries.find(e => e.date === date && e.svc === finalSvc && e.musician === musician)) {
+    showToast("That entry already exists.", "error"); return;
+  }
+
+  const [y,m,d] = date.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  const entry = {
+    id: String(Date.now()),
+    date,
+    day: DAYS[dt.getDay()],
+    svc: finalSvc,
+    pay: RATE,
+    musician
+  };
+
+  const btn = document.getElementById("addBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    const ok = await addEntry(entry);
+    if(ok) {
+      entries.push(entry);
+      entries = entries.map(e => ({...e, date: normDate(e.date)}));
+    entries.sort((a,b) => a.date.localeCompare(b.date));
+      showToast("Entry saved to Google Sheets!", "success");
+      render();
+    } else {
+      showToast("Save failed — try again.", "error");
+    }
+  } catch(e) {
+    showToast("Connection error — check your internet.", "error");
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Add entry";
+});
+
+function showToast(msg, type="success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + type;
+  setTimeout(() => { t.textContent = ""; t.className = "toast"; }, 3000);
+}
+
+document.getElementById("filterRow").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if(!btn) return;
+  filterSvc = btn.dataset.filter;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+  renderList();
+});
+
+document.getElementById("logList").addEventListener("click", async e => {
+  const btn = e.target.closest(".del-btn");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(!confirm("Delete this entry?")) return;
+  btn.textContent = "...";
+  try {
+    await deleteEntry(id);
+    entries = entries.filter(x => x.id !== id);
+    render();
+  } catch(e) {
+    showToast("Delete failed.", "error");
+  }
+});
+
+function parseDate(str) {
+  str = String(str).trim();
+  let y, m, d;
+  if (str.includes("-")) {
+    [y,m,d] = str.split("-").map(Number);
+  } else if (str.includes("/")) {
+    const parts = str.split("/").map(Number);
+    if (parts[0] > 31) { [y,m,d] = parts; }
+    else { [m,d,y] = parts; }
+  } else {
+    const dt = new Date(str);
+    if (!isNaN(dt)) { y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+  }
+  return {y, m, d};
+}
+
+function formatDate(str) {
+  const {y,m,d} = parseDate(str);
+  if (!y || !m || !d) return { display: str, day: "" };
+  const dt = new Date(y, m-1, d);
+  return { display: MON_SHORT[m-1]+" "+d+", "+y, day: DAYS[dt.getDay()] };
+}
+
+function normDate(str) {
+  const {y,m,d} = parseDate(str);
+  if (!y) return str;
+  return y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+
+function renderStats() {
+  const sr = document.getElementById("statsRow");
+  const pb = document.getElementById("printBtn");
+  if(entries.length === 0) { sr.style.display = "none"; pb.style.display = "none"; return; }
+  sr.style.display = "grid";
+  pb.style.display = "block";
+  const mo = parseInt(document.getElementById("monthSel").value);
+  const yr = parseInt(document.getElementById("yearSel").value);
+  const moE = entries.filter(e => {
+    const [ey,em] = e.date.split("-").map(Number);
+    return ey === yr && (em-1) === mo;
+  });
+  const totalPay = entries.length * RATE;
+  sr.innerHTML = `
+    <div class="stat"><div class="stat-num">${entries.length}</div><div class="stat-lbl">All services</div></div>
+    <div class="stat"><div class="stat-num">${moE.length}</div><div class="stat-lbl">${MONTHS[mo].slice(0,3)} services</div></div>
+    <div class="stat"><div class="stat-num">$${totalPay.toLocaleString()}</div><div class="stat-lbl">Total earned</div></div>
+  `;
+}
+
+function renderList() {
+  const list = document.getElementById("logList");
+  const pill = document.getElementById("countPill");
+  const filtered = filterSvc === "All" ? entries : entries.filter(e => e.svc === filterSvc);
+  pill.textContent = filtered.length === 1 ? "1 entry" : filtered.length + " entries";
+
+  if(filtered.length === 0) {
+    list.innerHTML = '<div class="empty">No entries yet — add your first date above.</div>';
+    return;
+  }
+
+  const musician = document.getElementById("musicianName").value.trim();
+  const myEntries = musician ? filtered.filter(e => e.musician.toLowerCase() === musician.toLowerCase()) : filtered;
+  const otherEntries = musician ? filtered.filter(e => e.musician.toLowerCase() !== musician.toLowerCase()) : [];
+
+  function entryHTML(e) {
+    const { display, day } = formatDate(e.date);
+    const c = COLORS[e.svc] || COLORS["Other"] || {bg:"#F5E8E8",border:"#C47A7A",text:"#8B2A2A"};
+    return `<div class="entry">
+      <div>
+        <div class="entry-date">${display}</div>
+        <div class="entry-day">${day}${e.musician ? ' &mdash; '+e.musician : ''}</div>
+      </div>
+      <div class="entry-right">
+        <span class="badge" style="background:${c.bg};border-color:${c.border};color:${c.text}">${e.svc}</span>
+        <span class="pay-amt">$${e.pay}</span>
+        <button class="del-btn" data-id="${e.id}" title="Delete">&#x2715;</button>
+      </div>
+    </div>`;
+  }
+
+  list.innerHTML = filtered.map(entryHTML).join("");
+}
+
+function render() {
+  document.getElementById("filterRow").style.display = entries.length > 0 ? "flex" : "none";
+  renderStats();
+  renderList();
+}
+
+// Print
+document.getElementById("printBtn").addEventListener("click", () => {
+  const name = document.getElementById("musicianName").value.trim() || "__________________";
+  const mo = parseInt(document.getElementById("monthSel").value);
+  const yr = parseInt(document.getElementById("yearSel").value);
+
+  const moEntries = entries.filter(e => {
+    const [ey,em] = e.date.split("-").map(Number);
+    const nameMatch = !document.getElementById("musicianName").value.trim() ||
+      e.musician.toLowerCase() === document.getElementById("musicianName").value.trim().toLowerCase();
+    return ey === yr && (em-1) === mo && nameMatch;
+  }).sort((a,b) => a.date.localeCompare(b.date));
+
+  const totalPay = moEntries.reduce((sum, e) => sum + (Number(e.pay) || RATE), 0);
+
+  const rows = moEntries.map((e,i) => {
+    const [,m,d] = e.date.split("-").map(Number);
+    const dt = new Date(parseInt(e.date.split("-")[0]),m-1,d);
+    return `<tr>
+      <td style="text-align:center;width:36px">${i+1}</td>
+      <td style="width:100px">${DAYS[dt.getDay()]}</td>
+      <td style="width:140px">${MON_SHORT[m-1]} ${d}, ${e.date.split("-")[0]}</td>
+      <td>${e.svc}</td>
+      <td style="text-align:right;width:90px">$${e.pay.toFixed(2)}</td>
+    </tr>`;
+  }).join("");
+
+  const blanks = Array(Math.max(0, 8 - moEntries.length)).fill(
+    `<tr><td></td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`
+  ).join("");
+
+  document.getElementById("printContent").innerHTML = `
+    <div class="ts-title">Employee Time Record</div>
+    <div class="ts-church">First Pilgrim Church &mdash; Musician Services</div>
+    <div class="ts-meta">
+      <div class="ts-meta-item"><div class="ts-meta-label">Employee</div><div class="ts-meta-value">${name}</div></div>
+      <div class="ts-meta-item"><div class="ts-meta-label">Month</div><div class="ts-meta-value">${MONTHS[mo]}</div></div>
+      <div class="ts-meta-item"><div class="ts-meta-label">Year</div><div class="ts-meta-value">${yr}</div></div>
+    </div>
+    <table class="ts-table">
+      <thead><tr>
+        <th>#</th><th>Day</th><th>Date</th><th>Description / Service</th><th style="text-align:right">Gross Pay</th>
+      </tr></thead>
+      <tbody>
+        ${rows}${blanks}
+        <tr class="total-row">
+          <td colspan="3">Total: ${moEntries.length} service${moEntries.length !== 1 ? 's' : ''}</td>
+          <td>@ $${(totalPay/moEntries.length||RATE).toFixed(2)} per service</td>
+          <td style="text-align:right">$${totalPay.toFixed(2)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="ts-sig">
+      <div><div class="ts-sig-line"></div><div class="ts-sig-label">Employee signature</div></div>
+      <div><div class="ts-sig-line"></div><div class="ts-sig-label">Authorized signature</div></div>
+    </div>
+    <div class="ts-footer">First Pilgrim Church &mdash; Generated ${new Date().toLocaleDateString()}</div>
+  `;
+  document.getElementById("printOverlay").classList.add("open");
+});
+
+document.getElementById("closeOverlay").addEventListener("click", () => document.getElementById("printOverlay").classList.remove("open"));
+document.getElementById("closeOverlay2").addEventListener("click", () => document.getElementById("printOverlay").classList.remove("open"));
+
+// Month/year change refreshes stats
+document.getElementById("monthSel").addEventListener("change", renderStats);
+document.getElementById("yearSel").addEventListener("change", renderStats);
+
+fetchEntries();
+</script>
+</body>
+</html>
