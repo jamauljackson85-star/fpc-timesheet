@@ -410,7 +410,7 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
 
 <div class="app-header">
   <div class="app-header-left">
-    <h1>First Pilgrim Church</h1>
+    <h1>First Pilgrim Calvary</h1>
     <p>Musician Timesheet</p>
   </div>
   <div class="sync-status">
@@ -831,7 +831,6 @@ function renderList() {
       </div>
       <div class="entry-right">
         <span class="badge" style="background:${c.bg};border-color:${c.border};color:${c.text}">${e.svc}</span>
-        <span class="pay-amt">$${e.pay}</span>
         <button class="del-btn" data-id="${e.id}" title="Delete">&#x2715;</button>
       </div>
     </div>`;
@@ -879,7 +878,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
 
   document.getElementById("printContent").innerHTML = `
     <div class="ts-title">Employee Time Record</div>
-    <div class="ts-church">First Pilgrim Church &mdash; Musician Services</div>
+    <div class="ts-church">First Pilgrim Calvary &mdash; Musician Services</div>
     <div class="ts-meta">
       <div class="ts-meta-item"><div class="ts-meta-label">Employee</div><div class="ts-meta-value">${name}</div></div>
       <div class="ts-meta-item"><div class="ts-meta-label">Month</div><div class="ts-meta-value">${MONTHS[mo]}</div></div>
@@ -902,7 +901,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
       <div><div class="ts-sig-line"></div><div class="ts-sig-label">Employee signature</div></div>
       <div><div class="ts-sig-line"></div><div class="ts-sig-label">Authorized signature</div></div>
     </div>
-    <div class="ts-footer">First Pilgrim Church &mdash; Generated ${new Date().toLocaleDateString()}</div>
+    <div class="ts-footer">First Pilgrim Calvary &mdash; Generated ${new Date().toLocaleDateString()}</div>
   `;
   document.getElementById("printOverlay").classList.add("open");
 });
